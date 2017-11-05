@@ -16,6 +16,8 @@ class CharStack {
 	private static int iSize = DEFAULT_SIZE;
 	private static int iTop = 3; // stack[0:9] with four defined values
 	private static char aCharStack[] = new char[] { 'a', 'b', 'c', 'd', '$', '$', '$', '$', '$', '$' };
+	
+	private static int accessCounter = 0;
 
 	// Default constructor
 	public CharStack() {
@@ -42,6 +44,7 @@ class CharStack {
 	 * Picks a value from the top without modifying the stack
 	 */
 	public static char pick() throws CharStackEmptyException {
+		++accessCounter;
 		if (iTop == -1)
 			throw new CharStackEmptyException();
 		return aCharStack[iTop];
@@ -51,6 +54,7 @@ class CharStack {
 	 * Returns arbitrary value from the stack array
 	 */
 	public char getAt(int piPosition) throws CharStackInvalidAccessException {
+		++accessCounter;
 		if (piPosition < 0 || piPosition >= iSize)
 			throw new CharStackInvalidAccessException();
 		return this.aCharStack[piPosition];
@@ -60,6 +64,7 @@ class CharStack {
 	 * Standard push operation
 	 */
 	public static void push(char pcChar) throws CharStackFullException {
+		++accessCounter;
 		if (iTop == iSize - 1)
 			throw new CharStackFullException();
 		aCharStack[++iTop] = pcChar;
@@ -69,6 +74,7 @@ class CharStack {
 	 * Standard pop operation
 	 */
 	public static char pop() throws CharStackEmptyException {
+		++accessCounter;
 		if (iTop == -1)
 			throw new CharStackEmptyException();
 		char cChar = aCharStack[iTop];
@@ -83,5 +89,22 @@ class CharStack {
 
 	public int getTop() {
 		return this.iTop;
+	}
+
+	public int getAccessCounter() {
+		return this.accessCounter;
+	}
+	
+	@Override
+	public String toString() {
+		String chars = "Stack S = (";
+		for (int j = 0; j < this.iSize; j++) {
+			chars += "[" + this.aCharStack[j] + "]";
+			if (j == iSize - 1)
+				chars += ")" + "\n";
+			else
+				chars += ",";
+		}
+		return chars;
 	}
 }

@@ -20,7 +20,7 @@ class Semaphore {
 				System.out.println("Semaphore::Wait() - caught InterruptedException: " + e.getMessage());
 				e.printStackTrace();
 			}
-		}
+		}		
 	}
 
 	public synchronized void Signal() {
@@ -37,6 +37,6 @@ class Semaphore {
 	}
 
 	public synchronized int getNumberOfWaitingProcesses() {
-		return this.value < 0 ? this.value * -1 : 0;
+		return this.value < 0 ? (this.value * -1) : 0;
 	}
 }

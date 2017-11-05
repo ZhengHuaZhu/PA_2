@@ -5,13 +5,16 @@ import charStackExceptions.*;
 public class StackManager {
 	// The Stack
 	private static CharStack stack = new CharStack();
+
 	private static final int NUM_ACQREL = 4; // Number of Producer/Consumer threads
 	private static final int NUM_PROBERS = 1; // Number of threads dumping stack
 	private static int iThreadSteps = 3; // Number of steps they take
 	
 	// Semaphore declarations. Insert your code in the following:
-	private static Semaphore mutex = new Semaphore(1);
-	 
+	private static Semaphore mutex = new Semaphore(1); // only 1 access allowed at a time 
+	private static Semaphore emptySlots = new Semaphore(6); //slots available for producing at the beginning
+	private static Semaphore filledSlots = new Semaphore(4); //letters available for consuming at the beginning
+	private static Semaphore semConsumer = new Semaphore();  
 	
 	// The main()
 	public static void main(String[] argv) {
@@ -60,7 +63,7 @@ public class StackManager {
 			System.out.println("Final value of top = " + stack.getTop() + ".");
 			System.out.println("Final value of stack top = " + stack.pick() + ".");
 			System.out.println("Final value of stack top-1 = " + stack.getAt(stack.getTop() - 1) + ".");
-			// System.out.println("Stack access count = " + stack.getAccessCounter());
+			System.out.println("Stack access count = " + stack.getAccessCounter());
 		} catch (InterruptedException e) {
 			System.out.println("Caught InterruptedException: " + e.getMessage());
 			System.exit(1);
@@ -79,22 +82,22 @@ public class StackManager {
 		private char copy; // A copy of a block returned by pop()
 
 		public void run() {
-			
+			semConsumer.P(); // consuming starts
 			System.out.println("Consumer thread [TID=" + this.iTID + "] starts executing.");
 			for (int i = 0; i < StackManager.iThreadSteps; i++) {
-				// Insert your code in the following:				
-				try {
+				// Insert your code in  the following:
+				try {		
+					filledSlots.P(); // checks if there is a letter that can be consumed		
 					mutex.P();
-					copy = stack.pop();
-					
+					copy = stack.pop(); // consumes the letter
+					mutex.V();
+					emptySlots.V(); // one slot is released that could be used to add a letter
 				} catch (CharStackEmptyException e) {
 					e.getMessage();
-				}	
+				}
 				System.out.println("Consumer thread [TID=" + this.iTID + "] pops character =" + this.copy);
-				mutex.V();
 			}
-			System.out.println("Consumer thread [TID=" + this.iTID + "] terminates.");	
-			
+			System.out.println("Consumer thread [TID=" + this.iTID + "] terminates.");
 		}
 	} // class Consumer
 	/*
@@ -104,23 +107,28 @@ public class StackManager {
 	static class Producer extends BaseThread {
 		private char block; // block to be returned
 
-		public void run() {	
-			
+		public void run() {				
 			System.out.println("Producer thread [TID=" + this.iTID + "] starts executing.");
 			for (int i = 0; i < StackManager.iThreadSteps; i++) {
 				// Insert your code in the following:			
-				try {
+				try {						
+					emptySlots.P(); // checks if there is a slot for adding a letter
 					mutex.P();
-					block=stack.pick();
-					block++;
-					stack.push(block);							
-				} catch (CharStackEmptyException | CharStackFullException e) {
-					e.getMessage();
+					// decide which letter to produce
+					block = stack.pick();
+					++block;															
+					stack.push(block);				
+					mutex.V();					
+					filledSlots.V();	// one more letter that could be consumed					
+				} catch (CharStackEmptyException ee){
+					ee.getMessage();
+				} catch (CharStackFullException fe) {
+					fe.getMessage();
 				}	
 				System.out.println("Producer thread [TID=" + this.iTID + "] pushes character =" + this.block);
-				mutex.V();
-			}
-			System.out.println("Producer thread [TID=" + this.iTID + "] terminates.");			
+			}		
+			System.out.println("Producer thread [TID=" + this.iTID + "] terminates.");
+			semConsumer.V(); // producing finishes
 		}
 	} // class Producer
 	/*
@@ -128,26 +136,19 @@ public class StackManager {
 	 */
 
 	static class CharStackProber extends BaseThread {
+		private String result;
+		
 		public void run() {
-			
 			System.out.println("CharStackProber thread [TID=" + this.iTID + "] starts executing.");
 			for (int i = 0; i < 2 * StackManager.iThreadSteps; i++) {
 				// Insert your code in the following. Note that the stack state
 				// must be printed in the required format.
 				mutex.P();
-				System.out.print("Stack S = (");
-				for (int j=0;j<stack.getSize();j++){		
-					try {
-						System.out.print("["+stack.getAt(j)+"],");
-						if(j==stack.getSize()-1){
-							System.out.print(")" + "\n");
-						}
-					} catch (CharStackInvalidAccessException e) {
-						e.getMessage();
-					}
-				}
+				result = stack.toString();
 				mutex.V();
-			}		
+				System.out.print(result);
+			}
+			System.out.println("CharStackProber thread [TID=" + this.iTID + "] terminates.");
 		}
 	} // class CharStackProber
 } // class StackManager
